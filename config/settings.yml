@@ -1,0 +1,54 @@
+application:
+  name: web_data_collector
+  log_level: info
+  log_file: "logs/app.log"
+
+source:
+  # Навчальний сайт, створений спеціально для практики веб-скрапінгу.
+  url: "https://books.toscrape.com/catalogue/category/books/mystery_3/index.html"
+  timeout: 15
+  max_pages: 3          # скільки сторінок пагінації обходити
+  request_delay: 0.5    # пауза між запитами, секунд (ввічливий скрапінг)
+  user_agent: "web_data_collector/1.0 (educational lab)"
+
+selectors:
+  item: "article.product_pod"
+  next_page: "li.next a"
+  fields:
+    title:
+      selector: "h3 a"
+      attribute: "title"
+      required: true
+    price:
+      selector: ".price_color"
+      normalize: price
+      required: true
+    rating:
+      selector: "p.star-rating"
+      attribute: "class"
+      normalize: rating
+    availability:
+      selector: ".availability"
+    category:
+      selector: ".page-header h1"
+      scope: page           # береться зі сторінки, а не з картки товару
+    url:
+      selector: "h3 a"
+      attribute: "href"
+      normalize: url
+      required: true
+    image_url:
+      selector: ".image_container img"
+      attribute: "src"
+      normalize: url
+
+database:
+  adapter: sqlite
+  path: "data/items.sqlite3"
+  table: items
+  unique_key: url
+
+output:
+  directory: "output"
+  format: json            # json | csv | yaml
+  filename: "items"

@@ -1,0 +1,7 @@
+/data/*
+/output/*
+/logs/*
+!.gitkeep
+.bundle/
+vendor/
+*.sqlite3
