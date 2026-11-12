@@ -8,6 +8,7 @@
 #   ruby main.rb --show 5                     # показати збережені записи
 
 require "optparse"
+require "yaml"
 require_relative "lib/web_data_collector"
 
 module WebDataCollector
@@ -24,6 +25,7 @@ module WebDataCollector
     def run
       return run_dsl if @options[:dsl]
       return show if @options[:show]
+      return schema if @options[:schema]
 
       run_engine
     rescue ConfigurationError => e
@@ -47,6 +49,7 @@ module WebDataCollector
         o.on("-p", "--pages N", Integer, "Max pages to crawl") { |v| @options[:pages] = v }
         o.on("-d", "--dsl FILE", "Run pipelines described in a DSL file") { |v| @options[:dsl] = v }
         o.on("-s", "--show [N]", Integer, "Print N items stored in the database") { |v| @options[:show] = v || 10 }
+        o.on("--schema", "Show getters/setters generated from YAML fields") { @options[:schema] = true }
         o.on("-h", "--help", "Show this help") do
           puts o
           exit
@@ -90,6 +93,41 @@ module WebDataCollector
       puts "#{db.count} rows in #{cfg.table} (#{cfg.database_path}); showing #{items.size}:"
       items.each { |item| puts "  #{item}" }
       db.close
+      0
+    end
+
+    # Демонстрація: які методи Item і ItemCollection згенеровано з YAML.
+    def schema
+      cfg = config
+      item_class = Item.define_schema(cfg.fields)
+      collection_class = ItemCollection.define_schema(item_class)
+
+      puts "Fields from #{@options[:config]} -> #{item_class.inspect}"
+      cfg.fields.each do |f|
+        methods = [f.name, :"#{f.name}?"]
+        methods << :"#{f.name}=" unless f.readonly?
+        puts format("  %-13s %-46s normalize: %s", f.name, methods.join(", "), f.normalize || "text")
+      end
+      generated = collection_class.instance_methods(false).sort
+      puts "ItemCollection methods: #{generated.join(', ')}"
+
+      puts "\nDemo:"
+      book = item_class.new(title: "Dune", url: "https://example.org/dune")
+      book.price = "£12.50"
+      book.rating = "star-rating Four"
+      puts "  book.price = \"£12.50\"               -> book.price  = #{book.price.inspect}"
+      puts "  book.rating = \"star-rating Four\"    -> book.rating = #{book.rating.inspect}"
+      puts "  book.price? = #{book.price?}, book.category? = #{book.category?}"
+      begin
+        book.url = "https://other"
+      rescue NoMethodError
+        puts "  book.url = ...                       -> NoMethodError (url is readonly)"
+      end
+      books = collection_class.new([book, item_class.new(title: "Emma", price: 8.0, url: "u2")])
+      puts "  books.title_values                   -> #{books.title_values.inspect}"
+      books.price_values = 5.0
+      puts "  books.price_values = 5.0             -> #{books.price_values.inspect}"
+      puts "  books.find_by_title(\"Emma\").url      -> #{books.find_by_title('Emma').url.inspect}"
       0
     end
   end

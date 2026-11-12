@@ -1,17 +1,69 @@
 # frozen_string_literal: true
 
-require_relative "item"
-
 module WebDataCollector
   # Набір об'єктів Item. Підключає Enumerable, тож map/select/sort_by/
   # group_by тощо доступні "з коробки"; методи, що повертають підмножину,
   # обгорнуті так, щоб результатом знову була ItemCollection.
+  #
+  # Для колекції теж генеруються методи з полів конфігурації
+  # (ItemCollection.define_schema), наприклад для поля price:
+  #   books.price_values           # гетер: [47.82, 51.33, ...]
+  #   books.price_values = 10.0    # сетер: усім записам (або масив - по порядку)
+  #   books.find_by_price(47.82)   # перший запис із таким значенням
+  #   books.where_price(0..30)     # відбір (Range, Regexp, значення або блок)
   class ItemCollection
     include Enumerable
+
+    class << self
+      def item_class
+        @item_class || Item
+      end
+
+      # Підклас колекції для конкретної схеми Item (див. Item.define_schema).
+      def define_schema(item_class)
+        Class.new(self) do
+          @item_class = item_class
+          item_class.attribute_names.each do |name|
+            define_method(:"#{name}_values") { map { |item| item[name] } }
+            define_method(:"find_by_#{name}") { |value| find { |item| item[name] == value } }
+            define_method(:"where_#{name}") { |matcher = nil, &block| where(name => block || matcher) }
+            next if item_class.readonly_attributes.include?(name)
+
+            define_method(:"#{name}_values=") do |value|
+              values = value.is_a?(Array) ? value : Array.new(size, value)
+              raise ArgumentError, "expected #{size} values, got #{values.size}" unless values.size == size
+
+              each_with_index { |item, i| item.public_send(:"#{name}=", values[i]) }
+            end
+          end
+        end
+      end
+
+      def inspect
+        name || "WebDataCollector::ItemCollection[#{item_class.attribute_names.join(', ')}]"
+      end
+      alias to_s inspect
+    end
 
     def initialize(items = [])
       @items = []
       items.each { |item| add(item) }
+    end
+
+    def item_class
+      self.class.item_class
+    end
+
+    # Створює запис класу цієї колекції і додає його.
+    def build(attributes = {})
+      item = item_class.new(attributes)
+      add(item)
+      item
+    end
+
+    # Значення одного поля з усіх записів.
+    def pluck(field)
+      map { |item| item[field] }
     end
 
     def add(item)

@@ -11,6 +11,9 @@ source:
   request_delay: 0.5    # пауза між запитами, секунд (ввічливий скрапінг)
   user_agent: "web_data_collector/1.0 (educational lab)"
 
+# Кожне поле тут - це ще й атрибут Item: для нього динамічно
+# генеруються гетер (title), сетер (title=) і предикат (title?).
+# readonly: true - лише гетер. Подивитися: ruby main.rb --schema
 selectors:
   item: "article.product_pod"
   next_page: "li.next a"
@@ -37,6 +40,7 @@ selectors:
       attribute: "href"
       normalize: url
       required: true
+      readonly: true        # унікальний ключ запису - змінювати не можна
     image_url:
       selector: ".image_container img"
       attribute: "src"

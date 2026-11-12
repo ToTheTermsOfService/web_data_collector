@@ -4,9 +4,6 @@ require "sqlite3"
 require "fileutils"
 require "logger"
 require "time"
-require_relative "errors"
-require_relative "item"
-require_relative "item_collection"
 
 module WebDataCollector
   # Робота з SQLite: створення таблиці, збереження та читання Item.
@@ -108,7 +105,13 @@ module WebDataCollector
         params << Integer(limit)
       end
       rows = with_errors("read items") { db.execute(sql, params) }
-      ItemCollection.new(rows.map { |row| row_to_item(row) })
+      item_class = stored_item_class
+      ItemCollection.define_schema(item_class).new(rows.map { |row| row_to_item(row, item_class) })
+    end
+
+    # Клас Item з гетерами/сетерами для колонок таблиці.
+    def stored_item_class
+      Item.define_schema(table_columns - SERVICE_COLUMNS)
     end
 
     def find(key_value)
@@ -165,10 +168,10 @@ module WebDataCollector
       end
     end
 
-    def row_to_item(row)
+    def row_to_item(row, item_class = stored_item_class)
       attrs = row.reject { |k, _| k.is_a?(Integer) || SERVICE_COLUMNS.include?(k) }
       scraped = row["scraped_at"] ? Time.parse(row["scraped_at"]) : Time.now
-      Item.new(attrs, scraped_at: scraped)
+      item_class.new(attrs, scraped_at: scraped)
     end
 
     def db_value(value)

@@ -1,12 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "errors"
-require_relative "configurator"
-require_relative "app_logger"
-require_relative "simple_website_parser"
-require_relative "database_connector"
-require_relative "exporters"
-
 module WebDataCollector
   # Координує основний процес:
   #   1. завантаження конфігурації;

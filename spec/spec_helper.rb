@@ -2,6 +2,7 @@
 
 require "tmpdir"
 require "fileutils"
+require "mechanize"
 require_relative "../lib/web_data_collector"
 
 FIXTURES = File.expand_path("fixtures", __dir__)

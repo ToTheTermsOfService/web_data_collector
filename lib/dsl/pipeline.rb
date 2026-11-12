@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../errors"
-require_relative "../configurator"
-require_relative "../exporters"
-
 module WebDataCollector
   module DSL
     # Об'єкт конфігурації конвеєра: лише дані + перевірка, без виконання.

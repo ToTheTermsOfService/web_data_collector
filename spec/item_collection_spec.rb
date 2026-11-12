@@ -59,6 +59,52 @@ RSpec.describe WebDataCollector::ItemCollection do
     expect(collection.to_export.first).to include(title: "B", price: 20.0)
   end
 
+  describe ".define_schema (methods generated from fields)" do
+    let(:item_class) do
+      WebDataCollector::Item.define_schema([
+        WebDataCollector::FieldDefinition.new(:title, selector: "h3"),
+        WebDataCollector::FieldDefinition.new(:price, selector: ".p", normalize: :price),
+        WebDataCollector::FieldDefinition.new(:url, selector: "a", readonly: true)
+      ])
+    end
+    let(:books_class) { described_class.define_schema(item_class) }
+    let(:books) do
+      books_class.new([item_class.new(title: "A", price: 10.0, url: "u1"),
+                       item_class.new(title: "B", price: 20.0, url: "u2")])
+    end
+
+    it "generates getters returning the values of one field" do
+      expect(books.title_values).to eq(%w[A B])
+      expect(books.pluck(:price)).to eq([10.0, 20.0])
+    end
+
+    it "generates setters for all items or by position" do
+      books.price_values = "£5"
+      expect(books.price_values).to eq([5.0, 5.0])
+      books.title_values = %w[X Y]
+      expect(books.title_values).to eq(%w[X Y])
+      expect { books.title_values = %w[only-one] }.to raise_error(ArgumentError)
+    end
+
+    it "does not generate a setter for readonly fields" do
+      expect(books).to respond_to(:url_values)
+      expect(books).not_to respond_to(:url_values=)
+    end
+
+    it "generates finders and filters per field" do
+      expect(books.find_by_title("B").url).to eq("u2")
+      expect(books.where_price(15..).map(&:title)).to eq(["B"])
+      expect(books.where_title { |t| t == "A" }.size).to eq(1)
+    end
+
+    it "keeps the schema class after filtering and builds items of its own class" do
+      expect(books.where_price(0..100)).to be_a(books_class)
+      item = books.build(title: "C", url: "u3")
+      expect(item).to be_a(item_class)
+      expect(books.size).to eq(3)
+    end
+  end
+
   it "handles an empty collection" do
     empty = described_class.new
     expect(empty).to be_empty

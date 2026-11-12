@@ -3,11 +3,6 @@
 require "mechanize"
 require "nokogiri"
 require "uri"
-require_relative "errors"
-require_relative "item"
-require_relative "item_collection"
-require_relative "normalizers"
-require_relative "configurator"
 
 module WebDataCollector
   # Завантажує сторінки вебресурсу (Mechanize), знаходить елементи за
@@ -28,7 +23,7 @@ module WebDataCollector
       OpenSSL::SSL::SSLError, Net::HTTP::Persistent::Error
     ].freeze
 
-    attr_reader :item_selector, :fields, :stats
+    attr_reader :item_selector, :fields, :stats, :item_class, :collection_class
 
     def self.from_config(config, logger:, agent: nil)
       new(
@@ -57,6 +52,9 @@ module WebDataCollector
       @retries = retries
       @logger = logger
       @agent = agent || build_agent(timeout, user_agent)
+      # Класи з гетерами/сетерами, згенерованими з опису полів (YAML або DSL).
+      @item_class = Item.define_schema(fields)
+      @collection_class = ItemCollection.define_schema(@item_class)
       reset_stats
     end
 
@@ -67,7 +65,7 @@ module WebDataCollector
       raise NetworkError, "invalid source URL: '#{url}'" unless Configurator.valid_http_url?(url)
 
       reset_stats
-      collection = ItemCollection.new
+      collection = @collection_class.new
       visited = {}
       current = url
 
@@ -142,7 +140,7 @@ module WebDataCollector
     def extract_items(doc, base_url)
       nodes = doc.css(item_selector)
       page_values = page_scope_values(doc, base_url)
-      items = ItemCollection.new
+      items = @collection_class.new
 
       nodes.each do |node|
         attrs = page_values.dup
@@ -153,7 +151,7 @@ module WebDataCollector
           @logger.warn("Skipping element: missing required field(s) #{missing.join(', ')}")
           next
         end
-        items << Item.new(attrs)
+        items << @item_class.new(attrs)
       end
       @stats[:items] += items.size
       items

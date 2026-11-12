@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../errors"
-require_relative "../field_definition"
-require_relative "pipeline"
-
 module WebDataCollector
   module DSL
     # Приймає виклики DSL усередині блоку pipeline і заповнює об'єкт Pipeline.
@@ -125,11 +121,13 @@ module WebDataCollector
 
         # field :price, selector: ".price_color", normalize: :price, required: true
         # field :title, ".product-title"   # скорочена форма
+        # field :url, "h3 a", attribute: :href, readonly: true   # без сетера в Item
         def field(name, selector_arg = nil, selector: nil, attribute: nil, normalize: nil,
-                  required: false, scope: :item, &normalizer)
+                  required: false, scope: :item, readonly: false, &normalizer)
           @pipeline.add_field(
             FieldDefinition.new(name, selector: selector || selector_arg, attribute: attribute,
-                                      normalize: normalizer || normalize, required: required, scope: scope)
+                                      normalize: normalizer || normalize, required: required,
+                                      scope: scope, readonly: readonly)
           )
         rescue ValidationError => e
           raise ValidationError, "pipeline '#{@pipeline.name}': #{e.message}"

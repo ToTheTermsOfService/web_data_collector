@@ -1,10 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "errors"
-require_relative "exporters/json_exporter"
-require_relative "exporters/csv_exporter"
-require_relative "exporters/yaml_exporter"
-
 module WebDataCollector
   # Реєстр форматів експорту: format -> клас експортера.
   module Exporters

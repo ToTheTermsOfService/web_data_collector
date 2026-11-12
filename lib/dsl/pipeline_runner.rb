@@ -1,12 +1,6 @@
 # frozen_string_literal: true
 
 require "logger"
-require_relative "../errors"
-require_relative "../item_collection"
-require_relative "../simple_website_parser"
-require_relative "../database_connector"
-require_relative "../exporters"
-require_relative "pipeline"
 
 module WebDataCollector
   module DSL

@@ -2,8 +2,6 @@
 
 require "yaml"
 require "uri"
-require_relative "errors"
-require_relative "field_definition"
 
 module WebDataCollector
   # Централізоване завантаження, перевірка та надання конфігурації.

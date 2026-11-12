@@ -40,3 +40,13 @@ task :clean do
   FileUtils.rm_f(Dir["output/*.{json,csv,yaml}"] + Dir["logs/*.log"])
   puts "Output and logs removed"
 end
+
+namespace :autoload do
+  desc "Eager-load every library class to check the autoloader mapping"
+  task :check do
+    require_relative "lib/web_data_collector"
+    WebDataCollector.loader.eager_load!
+    puts "OK: #{WebDataCollector.loader.mapping.size} constants mapped and loaded"
+    WebDataCollector.loader.mapping.each { |name, target| puts "  #{name.ljust(45)} #{target == :namespace ? '(namespace)' : File.basename(target)}" }
+  end
+end

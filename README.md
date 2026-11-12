@@ -8,6 +8,8 @@ Ruby-застосунок для збору даних із вебресурсу
 - **Частина I** — основний застосунок: `Item`, `ItemCollection`, `SimpleWebsiteParser`, `DatabaseConnector`,
   `Configurator`, `Engine`, логування, тести.
 - **Частина II** — DSL (`pipeline … do … end`), що використовує компоненти Частини I.
+- **Власний автозавантажувач класів** (`lib/autoloader.rb`) — без `require_relative` між файлами бібліотеки.
+- **Динамічні гетери й сетери** для `Item` і `ItemCollection`, згенеровані з полів YAML-конфігурації або DSL.
 - **Додаткові розширення** — експорт у CSV та YAML, окремий компонент `Configurator`, розширена модель
   (`Comparable`, `Enumerable`, фільтри з `Range`/`Regexp`).
 
@@ -19,7 +21,8 @@ bundle install                                   # залежності (Ruby 3.
 bundle exec ruby main.rb                         # збір → SQLite → output/items.json
 bundle exec ruby main.rb --dsl dsl/books_pipeline.rb   # конвеєри з DSL
 bundle exec ruby main.rb --show 5                # що лежить у базі
-bundle exec rspec                                # 77 тестів, офлайн
+bundle exec ruby main.rb --schema                # які гетери/сетери згенеровано з YAML
+bundle exec rspec                                # 100 тестів, офлайн
 ```
 
 Результати: `output/` (JSON/CSV/YAML), `data/*.sqlite3` (бази), `logs/app.log` (журнал).
@@ -129,7 +132,14 @@ ruby main.rb                              # основний процес за c
 ruby main.rb --format csv --pages 1       # інший формат / кількість сторінок
 ruby main.rb --show 5                     # показати записи з бази
 ruby main.rb --dsl dsl/books_pipeline.rb  # конвеєри з DSL-файлу
+ruby main.rb --schema                     # згенеровані з YAML методи Item/ItemCollection + демо
 ruby main.rb --help
+```
+
+Щоб побачити, які класи і коли підвантажує автозавантажувач (PowerShell):
+
+```powershell
+$env:WDC_AUTOLOAD_DEBUG=1; bundle exec ruby main.rb --show 1; Remove-Item Env:WDC_AUTOLOAD_DEBUG
 ```
 
 Завдання Rake:
@@ -142,6 +152,7 @@ rake db:show      # записи з бази
 rake db:reset     # видалити бази
 rake clean        # видалити output і logs
 rake spec         # тести (rake за замовчуванням)
+rake autoload:check  # завантажити всі класи й показати таблицю «константа → файл»
 ```
 
 Каталоги `data/`, `output/`, `logs/` створюються автоматично.
@@ -194,9 +205,11 @@ main.rb (CLI)
 
 | Файл | Призначення |
 |------|-------------|
-| `lib/item.rb` | запис із довільним набором атрибутів; доступ `item.title`, `item[:title]`, `to_h`; `Comparable` |
-| `lib/item_collection.rb` | колекція з `Enumerable`: `add`, `find_by`, `where`, `sort_by_field`, `uniq_by`, `to_export` |
-| `lib/field_definition.rb` | опис поля (селектор, атрибут, нормалізатор, обов'язковість) з перевіркою |
+| `lib/web_data_collector.rb` | точка входу: налаштовує автозавантажувач для простору імен `WebDataCollector` |
+| `lib/autoloader.rb` | власний автозавантажувач класів |
+| `lib/item.rb` | запис; `Item.define_schema(fields)` генерує гетери/сетери/предикати; `Comparable` |
+| `lib/item_collection.rb` | колекція з `Enumerable`: `add`, `find_by`, `where`, `sort_by_field`, `uniq_by`, `to_export`; згенеровані `*_values`, `find_by_*`, `where_*` |
+| `lib/field_definition.rb` | опис поля (селектор, атрибут, нормалізатор, обов'язковість, `readonly`) з перевіркою |
 | `lib/normalizers.rb` | перетворення сирих рядків (ціна, рейтинг, URL…) |
 | `lib/simple_website_parser.rb` | завантаження, пагінація, повторні спроби, витяг полів |
 | `lib/database_connector.rb` | схема, збереження, читання; параметризовані SQL-запити |
@@ -218,6 +231,66 @@ main.rb (CLI)
 - конфігурація — перелік усіх проблем одразу.
 
 Користувач бачить коротке повідомлення, технічні подробиці пишуться в `logs/app.log`.
+
+## Автозавантаження класів
+
+Усі класи лежать у просторі імен `WebDataCollector`. Файли бібліотеки **не підключають один одного**
+через `require_relative`: `lib/web_data_collector.rb` підключає лише `lib/autoloader.rb` і викликає `setup`.
+
+Як працює `WebDataCollector::Autoloader`:
+
+1. **Сканування.** `setup` проходить `lib/` і будує таблицю «повне ім'я константи → файл» за угодою
+   `snake_case` → `CamelCase`:
+
+   | Файл | Константа |
+   |------|-----------|
+   | `item_collection.rb` | `WebDataCollector::ItemCollection` |
+   | `exporters/json_exporter.rb` | `WebDataCollector::Exporters::JsonExporter` |
+   | `dsl/pipeline_builder.rb` | `WebDataCollector::DSL::PipelineBuilder` (виняток у відмінюванні: `dsl` → `DSL`) |
+   | каталог `dsl/` без `dsl.rb` | модуль `WebDataCollector::DSL` створюється автоматично |
+
+2. **Ліниве завантаження.** Коли Ruby не знаходить константу, він викликає `const_missing` на класі,
+   де стоїть звернення. Автозавантажувач підмішує в `Module` свій хук `ConstMissingHook`. Хук перебирає
+   можливі повні імена, від найглибшого простору імен до верхнього. Наприклад, для звернення до `Item`
+   з `Engine` він пробує `WebDataCollector::Engine::Item`, потім `WebDataCollector::Item`. Знайшовши файл
+   у таблиці, хук підключає його і повертає константу. Чужі простори імен передаються стандартному
+   `const_missing`, тож звичайний `NameError` нікуди не дівається.
+3. **Перевірка.** Якщо файл не визначив очікувану константу, виникає зрозуміла помилка
+   `expected broken.rb to define ...`. Завантаження захищене `Monitor`, тож його можна викликати з кількох потоків.
+4. **Preload.** `errors.rb` містить кілька класів винятків, тому підключається одразу.
+
+Клас завантажується лише тоді, коли він уперше знадобився. Наприклад, `ruby main.rb --show 1` підвантажує
+6 класів, а парсер, Mechanize і Engine при цьому не підключаються зовсім. Перевірити всю таблицю:
+`rake autoload:check`.
+
+## Динамічні гетери й сетери з YAML
+
+Атрибути `Item` не прописані в коді. Вони генеруються через `define_method` з опису полів у
+`config/settings.yml` (або з `field` у DSL):
+
+```ruby
+BookItem = Item.define_schema(config.fields)       # підклас Item
+book = BookItem.new(title: "Dune")
+book.price = "£12.50"   # сетер; рядок проходить через normalize поля -> 12.5
+book.price              # гетер -> 12.5
+book.price?             # предикат -> true
+book.url = "..."        # NoMethodError: у YAML для url вказано readonly: true
+
+Books = ItemCollection.define_schema(BookItem)
+books.title_values           # ["Dune", ...]
+books.price_values = 10.0    # сетер для всіх записів (або масив значень по порядку)
+books.find_by_title("Dune")
+books.where_price(0..30)
+```
+
+- Для кожного поля генеруються методи `name`, `name=` і `name?`. Якщо поле має `readonly: true`, сетера немає.
+- Сетер нормалізує рядки тим самим нормалізатором, що й парсер (`price`, `rating`, `url`, `text`).
+- Парсер (`SimpleWebsiteParser`) створює записи саме таких класів, а `DatabaseConnector#all` будує схему
+  з колонок таблиці.
+- Ім'я поля, яке перекрило б метод `Item` (`hash`, `to_h`, `fields`…), відхиляється ще під час валідації конфігурації.
+- Звичайний `Item.new(title: …)` без схеми отримує ті самі методи для своїх ключів як синглтон-методи об'єкта.
+
+Подивитися, що згенеровано з поточного YAML, і коротке демо: `ruby main.rb --schema`.
 
 ## Частина II — DSL
 
@@ -303,10 +376,12 @@ Pipeline 'Поезія: усі книжки, дорожчі за 20 фунтів
 bundle exec rspec        # або: rake
 ```
 
-77 тестів (RSpec). Тести не ходять у мережу: `FakeAgent` підміняє Mechanize і віддає збережені сторінки
+100 тестів (RSpec). Тести не ходять у мережу: `FakeAgent` підміняє Mechanize і віддає збережені сторінки
 з `spec/fixtures/`. Покрито:
 
+- `Autoloader` — відповідність «файл → константа», ліниве завантаження, неявні простори імен, помилки, eager load;
 - `Item`, `ItemCollection` — доступ до атрибутів, фільтрація, сортування, порожня колекція, некоректні об'єкти;
+  згенеровані з YAML гетери, сетери з нормалізацією, `readonly`, заборонені імена, методи колекції;
 - `Normalizers`, `FieldDefinition` — формати цін/рейтингів/URL, некоректні селектори;
 - `SimpleWebsiteParser` — парсинг, пагінація, `max_pages`, відсутні поля, мережеві та HTTP-помилки;
 - `DatabaseConnector` — збереження, читання, захист від дублікатів, SQL-ін'єкції, нові колонки, помилки SQLite;
@@ -323,7 +398,7 @@ web_data_collector/
 ├── Gemfile, Gemfile.lock, Rakefile, README.md, main.rb
 ├── config/settings.yml
 ├── lib/
-│   ├── web_data_collector.rb
+│   ├── web_data_collector.rb, autoloader.rb
 │   ├── item.rb, item_collection.rb, field_definition.rb, normalizers.rb
 │   ├── simple_website_parser.rb, database_connector.rb
 │   ├── configurator.rb, app_logger.rb, engine.rb, errors.rb

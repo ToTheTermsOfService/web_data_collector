@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../errors"
-require_relative "pipeline_builder"
-
 module WebDataCollector
   module DSL
     # Завантажує DSL-файл і повертає список описаних у ньому конвеєрів.
