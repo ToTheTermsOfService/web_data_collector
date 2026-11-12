@@ -1,9 +1,3 @@
-# Опис конвеєрів збору даних мовою DSL.
-# Запуск:  ruby main.rb --dsl dsl/books_pipeline.rb   або   rake dsl
-#
-# Файл містить лише декларативний опис - код парсера, бази та
-# експортерів не змінюється.
-
 pipeline "Дешеві детективи з високим рейтингом" do
   source "https://books.toscrape.com/catalogue/category/books/mystery_3/index.html", pages: 2, delay: 0.5
 
@@ -14,7 +8,6 @@ pipeline "Дешеві детективи з високим рейтингом" 
     field :availability, selector: ".availability"
     field :category,     selector: ".page-header h1", scope: :page
     field :url,          selector: "h3 a", attribute: :href, normalize: :url, required: true
-    # власний нормалізатор - звичайний Ruby-блок
     field(:in_stock, selector: ".availability") { |text| text.to_s.include?("In stock") }
   end
 

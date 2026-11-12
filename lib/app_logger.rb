@@ -4,11 +4,9 @@ require "logger"
 require "fileutils"
 
 module WebDataCollector
-  # Логер, що пише одночасно у файл (усі деталі) і в консоль (коротко).
   module AppLogger
     LEVELS = %w[debug info warn error fatal].freeze
 
-    # Розсилає кожен запис на кілька пристроїв (файл + STDOUT).
     class MultiIO
       def initialize(*targets)
         @targets = targets

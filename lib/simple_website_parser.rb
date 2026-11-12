@@ -5,16 +5,6 @@ require "nokogiri"
 require "uri"
 
 module WebDataCollector
-  # Завантажує сторінки вебресурсу (Mechanize), знаходить елементи за
-  # CSS-селекторами (Nokogiri) і перетворює їх на ItemCollection.
-  #
-  # Алгоритм:
-  #   1. перевірити URL;
-  #   2. завантажити сторінку (з повторними спробами при мережевих збоях);
-  #   3. знайти всі "картки" за item_selector;
-  #   4. для кожної картки витягти поля згідно з FieldDefinition;
-  #   5. відкинути записи без обов'язкових полів;
-  #   6. перейти за посиланням next_page_selector (до max_pages сторінок).
   class SimpleWebsiteParser
     NETWORK_ERRORS = [
       Mechanize::ResponseCodeError, Mechanize::RedirectLimitReachedError,
@@ -52,15 +42,11 @@ module WebDataCollector
       @retries = retries
       @logger = logger
       @agent = agent || build_agent(timeout, user_agent)
-      # Класи з гетерами/сетерами, згенерованими з опису полів (YAML або DSL).
       @item_class = Item.define_schema(fields)
       @collection_class = ItemCollection.define_schema(@item_class)
       reset_stats
     end
 
-    # Повертає ItemCollection. Кидає NetworkError/ParseError, якщо не вдалося
-    # отримати навіть першу сторінку; збої на наступних сторінках лише
-    # логуються, а вже зібрані дані повертаються.
     def parse(url)
       raise NetworkError, "invalid source URL: '#{url}'" unless Configurator.valid_http_url?(url)
 
@@ -91,7 +77,6 @@ module WebDataCollector
       collection
     end
 
-    # Розбір уже завантаженого HTML (зручно для тестів та офлайн-обробки).
     def parse_html(html, base_url: nil)
       reset_stats
       @stats[:pages] = 1
@@ -129,7 +114,6 @@ module WebDataCollector
       end
     end
 
-    # 4xx (крім 429) повторювати немає сенсу.
     def retryable?(error)
       return true unless error.is_a?(Mechanize::ResponseCodeError)
 

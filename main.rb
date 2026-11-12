@@ -1,12 +1,5 @@
 # frozen_string_literal: true
 
-# Точка входу.
-#
-#   ruby main.rb                              # основний процес за config/settings.yml
-#   ruby main.rb --config other.yml --format csv
-#   ruby main.rb --dsl dsl/books_pipeline.rb  # запуск конвеєрів, описаних у DSL
-#   ruby main.rb --show 5                     # показати збережені записи
-
 require "optparse"
 require "yaml"
 require_relative "lib/web_data_collector"
@@ -96,7 +89,6 @@ module WebDataCollector
       0
     end
 
-    # Демонстрація: які методи Item і ItemCollection згенеровано з YAML.
     def schema
       cfg = config
       item_class = Item.define_schema(cfg.fields)

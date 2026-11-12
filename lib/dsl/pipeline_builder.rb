@@ -2,21 +2,6 @@
 
 module WebDataCollector
   module DSL
-    # Приймає виклики DSL усередині блоку pipeline і заповнює об'єкт Pipeline.
-    #
-    #   pipeline "Детективи" do
-    #     source "https://books.toscrape.com/..."
-    #     pages 2
-    #     extract each: "article.product_pod" do
-    #       field :title, selector: "h3 a", attribute: :title, required: true
-    #     end
-    #     filter(:price) { |price| price < 30 }
-    #     save_to :sqlite, table: "books"
-    #     export :json, path: "output/books.json"
-    #   end
-    #
-    # Блоки виконуються через instance_eval(&block) - це звичайні Ruby-блоки,
-    # а не рядки коду, тож eval довільного тексту не використовується.
     class PipelineBuilder
       DEFAULT_DB_PATH = "data/pipelines.sqlite3"
 
@@ -35,7 +20,6 @@ module WebDataCollector
         @root = root
       end
 
-      # --- джерело ---
       def source(url, pages: nil, delay: nil, timeout: nil, user_agent: nil)
         pipeline.source_url = url.to_s.strip
         pages(pages) if pages
@@ -56,8 +40,6 @@ module WebDataCollector
         pipeline.next_page_selector = selector
       end
 
-      # --- поля ---
-      # each: CSS-селектор "картки" запису; next_page: селектор пагінації.
       def extract(each: nil, next_page: nil, &block)
         raise ValidationError, "extract needs a block with field definitions" unless block
 
@@ -66,22 +48,15 @@ module WebDataCollector
         FieldsBuilder.new(pipeline).instance_eval(&block)
       end
 
-      # --- фільтрація ---
-      #   filter(:price) { |price| price < 30 }            # за значенням поля
-      #   filter(:price) { |price, item| ... }             # з доступом до запису
-      #   filter { |item| item.title.include?("Murder") }  # на рівні запису
-      #   filter :rating, 4..5                             # без блоку: Range/Regexp/Array/значення
       def filter(field = nil, matcher = nil, description: nil, &block)
         block ||= matcher_block(field, matcher)
         pipeline.add_filter(Pipeline::Filter.new(field&.to_sym, block, description))
       end
 
-      # Скорочення для кількох умов: where price: 0..30, rating: 4..5
       def where(**conditions)
         conditions.each { |field, matcher| filter(field, matcher, description: "#{field} matches #{matcher.inspect}") }
       end
 
-      # --- збереження та експорт ---
       def save_to(type, table: "items", path: DEFAULT_DB_PATH, unique_key: :url)
         pipeline.add_storage(Pipeline::Storage.new(type: type.to_sym, path: expand(path),
                                                    table: table.to_s, unique_key: unique_key.to_sym))
@@ -113,15 +88,11 @@ module WebDataCollector
         end
       end
 
-      # Контекст блоку extract: тут доступний лише метод field.
       class FieldsBuilder
         def initialize(pipeline)
           @pipeline = pipeline
         end
 
-        # field :price, selector: ".price_color", normalize: :price, required: true
-        # field :title, ".product-title"   # скорочена форма
-        # field :url, "h3 a", attribute: :href, readonly: true   # без сетера в Item
         def field(name, selector_arg = nil, selector: nil, attribute: nil, normalize: nil,
                   required: false, scope: :item, readonly: false, &normalizer)
           @pipeline.add_field(

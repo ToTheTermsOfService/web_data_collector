@@ -1,20 +1,10 @@
 # frozen_string_literal: true
 
 module WebDataCollector
-  # Координує основний процес:
-  #   1. завантаження конфігурації;
-  #   2. запуск парсера;
-  #   3. отримання колекції;
-  #   4. перевірка та обробка (дедуплікація, сортування);
-  #   5. збереження в SQLite;
-  #   6. експорт і підсумкова інформація.
-  # Сам Engine не парсить і не пише в базу - він лише викликає окремі
-  # компоненти, які можна підмінити (наприклад, у тестах).
   class Engine
     Result = Struct.new(:status, :source, :pages, :collected, :skipped, :processed,
                         :db_stats, :export_path, :duration, :error, keyword_init: true) do
       def success? = status == :success
-
       def summary
         return "FAILED: #{error}" unless success?
 
@@ -65,8 +55,6 @@ module WebDataCollector
       logger.info("=== run finished ===")
     end
 
-    # Перевірка та обробка результатів: прибрати повтори за унікальним
-    # ключем і впорядкувати записи.
     def process(collection)
       unique = collection.uniq_by(config.unique_key)
       dropped = collection.size - unique.size

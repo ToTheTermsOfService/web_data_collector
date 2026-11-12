@@ -66,7 +66,7 @@ RSpec.describe WebDataCollector::DatabaseConnector, :tmpdir do
   end
 
   it "wraps SQLite errors in DatabaseError" do
-    bad = described_class.new(path: @tmpdir, table: "t", logger: null_logger) # каталог замість файлу
+    bad = described_class.new(path: @tmpdir, table: "t", logger: null_logger)
     expect { bad.prepare_schema(%i[url]) }.to raise_error(WebDataCollector::DatabaseError)
   end
 

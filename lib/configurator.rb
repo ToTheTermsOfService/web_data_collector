@@ -4,13 +4,6 @@ require "yaml"
 require "uri"
 
 module WebDataCollector
-  # Централізоване завантаження, перевірка та надання конфігурації.
-  #
-  # Відносні шляхи (база, логи, вихідні файли) розв'язуються від кореня
-  # проєкту, тому застосунок можна запускати з будь-якого каталогу.
-  # Деякі параметри можна перевизначити змінними середовища
-  # (WDC_SOURCE_URL, WDC_DATABASE_PATH, WDC_LOG_LEVEL), щоб не тримати
-  # специфічні для середовища значення в репозиторії.
   class Configurator
     SUPPORTED_ADAPTERS = %w[sqlite].freeze
     SUPPORTED_FORMATS = %w[json csv yaml].freeze
@@ -45,37 +38,27 @@ module WebDataCollector
       data.dig(*keys.map(&:to_s))
     end
 
-    # --- application ---
     def app_name = dig(:application, :name) || "web_data_collector"
     def log_level = dig(:application, :log_level) || "info"
     def log_file = expand(dig(:application, :log_file) || "logs/app.log")
-
-    # --- source ---
     def source_url = dig(:source, :url)
     def timeout = (dig(:source, :timeout) || 15).to_i
     def max_pages = (dig(:source, :max_pages) || 1).to_i
     def request_delay = (dig(:source, :request_delay) || 0).to_f
     def user_agent = dig(:source, :user_agent) || "web_data_collector/1.0"
-
-    # --- selectors ---
     def item_selector = dig(:selectors, :item)
     def next_page_selector = dig(:selectors, :next_page)
-
     def fields
       @fields ||= dig(:selectors, :fields).map { |name, opts| FieldDefinition.from_config(name, opts) }
     end
 
-    # --- database ---
     def database_path = expand(dig(:database, :path))
     def table = dig(:database, :table) || "items"
     def unique_key = (dig(:database, :unique_key) || "url").to_sym
-
-    # --- output ---
     def output_directory = expand(dig(:output, :directory) || "output")
     def output_format = (dig(:output, :format) || "json").to_s.downcase
     def output_filename = dig(:output, :filename) || "items"
     def output_path = File.join(output_directory, "#{output_filename}.#{output_format}")
-
     def expand(path)
       return nil if path.nil?
 
@@ -105,7 +88,7 @@ module WebDataCollector
       errors << "output.format '#{output_format}' is not supported (use: #{SUPPORTED_FORMATS.join(', ')})" unless SUPPORTED_FORMATS.include?(output_format)
       raise ConfigurationError, "invalid configuration:\n  - #{errors.join("\n  - ")}" if errors.any?
 
-      fields # будує FieldDefinition і перевіряє кожне поле
+      fields
       return if fields.map(&:name).include?(unique_key)
 
       raise ConfigurationError, "database.unique_key '#{unique_key}' must be one of the configured fields"

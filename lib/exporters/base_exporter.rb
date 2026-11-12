@@ -4,8 +4,6 @@ require "fileutils"
 
 module WebDataCollector
   module Exporters
-    # Спільна логіка експортерів: перевірка шляху, створення каталогу,
-    # обробка помилок запису. Нащадки реалізують лише #serialize.
     class BaseExporter
       def self.extensions
         raise NotImplementedError

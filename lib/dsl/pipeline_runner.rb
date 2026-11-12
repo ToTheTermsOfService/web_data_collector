@@ -4,18 +4,12 @@ require "logger"
 
 module WebDataCollector
   module DSL
-    # Виконує описаний у DSL конвеєр, використовуючи компоненти Частини I:
-    #   validate -> parse (SimpleWebsiteParser) -> filter (ItemCollection)
-    #   -> save (DatabaseConnector) -> export (Exporters) -> log.
-    # Помилка на будь-якому етапі зупиняє конвеєр; у результаті вказується,
-    # на якому саме етапі вона сталася.
     class PipelineRunner
       STAGES = %i[validate parse filter save export].freeze
 
       Result = Struct.new(:pipeline, :status, :stage, :error, :collected, :filtered_out,
                           :items, :db_stats, :exported, :duration, keyword_init: true) do
         def success? = status == :success
-
         def summary
           return "Pipeline '#{pipeline}' FAILED at stage '#{stage}': #{error}" unless success?
 
@@ -62,9 +56,6 @@ module WebDataCollector
                    items: ItemCollection.new, db_stats: [], exported: [], duration: Time.now - started)
       end
 
-      # Фільтри застосовуються послідовно (логічне І). Запис проходить далі,
-      # лише якщо всі фільтри повернули істинне значення. Якщо блок фільтра
-      # кидає виняток, запис відкидається, а помилка логується.
       def apply_filters(collection)
         return collection if @pipeline.filters.empty?
 

@@ -1,10 +1,5 @@
 # frozen_string_literal: true
 
-# Точка підключення бібліотеки: require "web_data_collector".
-#
-# Інші файли lib/ не підключаються вручну - їх за потреби завантажує
-# власний Autoloader (див. lib/autoloader.rb). Щоб побачити, який клас і
-# коли завантажився, запустіть із WDC_AUTOLOAD_DEBUG=1.
 require_relative "autoloader"
 
 module WebDataCollector
@@ -16,7 +11,7 @@ module WebDataCollector
       root: __dir__,
       namespace: name,
       ignore: [__FILE__, File.join(__dir__, "autoloader.rb")],
-      preload: [File.join(__dir__, "errors.rb")], # кілька класів винятків в одному файлі
+      preload: [File.join(__dir__, "errors.rb")],
       logger: ENV["WDC_AUTOLOAD_DEBUG"] ? ->(msg) { warn msg } : nil
     )
   end

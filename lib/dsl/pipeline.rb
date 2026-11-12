@@ -2,13 +2,9 @@
 
 module WebDataCollector
   module DSL
-    # Об'єкт конфігурації конвеєра: лише дані + перевірка, без виконання.
-    # Його будує PipelineBuilder, а виконує PipelineRunner.
     class Pipeline
-      # Фільтр: field = nil означає фільтр на рівні всього запису.
       Filter = Struct.new(:field, :block, :description) do
         def record_level? = field.nil?
-
         def to_s
           description || (record_level? ? "record filter" : "filter on :#{field}")
         end
@@ -54,7 +50,6 @@ module WebDataCollector
         fields.map(&:name)
       end
 
-      # Повертає масив повідомлень про помилки (порожній - конфігурація коректна).
       def errors
         errors = []
         errors << "pipeline name is empty" if name.strip.empty?

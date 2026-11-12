@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module WebDataCollector
-  # Реєстр форматів експорту: format -> клас експортера.
   module Exporters
     REGISTRY = {
       json: JsonExporter,

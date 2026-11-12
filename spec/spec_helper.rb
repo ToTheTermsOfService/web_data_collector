@@ -9,8 +9,6 @@ FIXTURES = File.expand_path("fixtures", __dir__)
 CATEGORY_URL = "https://books.toscrape.com/catalogue/category/books/mystery_3/index.html"
 PAGE2_URL = "https://books.toscrape.com/catalogue/category/books/mystery_3/page-2.html"
 
-# Підміна Mechanize: віддає збережені HTML-сторінки замість мережевих запитів,
-# тож тести не залежать від інтернету та стану сайту.
 class FakeAgent
   FakePage = Struct.new(:parser, :uri)
 

@@ -1,16 +1,6 @@
 # frozen_string_literal: true
 
 module WebDataCollector
-  # Набір об'єктів Item. Підключає Enumerable, тож map/select/sort_by/
-  # group_by тощо доступні "з коробки"; методи, що повертають підмножину,
-  # обгорнуті так, щоб результатом знову була ItemCollection.
-  #
-  # Для колекції теж генеруються методи з полів конфігурації
-  # (ItemCollection.define_schema), наприклад для поля price:
-  #   books.price_values           # гетер: [47.82, 51.33, ...]
-  #   books.price_values = 10.0    # сетер: усім записам (або масив - по порядку)
-  #   books.find_by_price(47.82)   # перший запис із таким значенням
-  #   books.where_price(0..30)     # відбір (Range, Regexp, значення або блок)
   class ItemCollection
     include Enumerable
 
@@ -19,7 +9,6 @@ module WebDataCollector
         @item_class || Item
       end
 
-      # Підклас колекції для конкретної схеми Item (див. Item.define_schema).
       def define_schema(item_class)
         Class.new(self) do
           @item_class = item_class
@@ -54,14 +43,12 @@ module WebDataCollector
       self.class.item_class
     end
 
-    # Створює запис класу цієї колекції і додає його.
     def build(attributes = {})
       item = item_class.new(attributes)
       add(item)
       item
     end
 
-    # Значення одного поля з усіх записів.
     def pluck(field)
       map { |item| item[field] }
     end
@@ -113,16 +100,11 @@ module WebDataCollector
       @items.last
     end
 
-    # Пошук першого запису: за блоком або за точною відповідністю атрибутів.
-    #   find_by(title: "Sharp Objects")
     def find_by(conditions = nil, &block)
       block ||= ->(item) { conditions.all? { |k, v| item[k] == v } }
       @items.find(&block)
     end
 
-    # Фільтрація: блок, хеш умов або обидва.
-    # Значенням умови може бути Range, Regexp, Proc або точне значення.
-    #   where(rating: 4..5) { |i| i.price < 30 }
     def where(conditions = {}, &block)
       result = @items.select do |item|
         conditions.all? { |field, expected| match?(item[field], expected) } &&
@@ -145,7 +127,6 @@ module WebDataCollector
       self.class.new(direction == :desc ? sorted.reverse : sorted)
     end
 
-    # Прибирає повтори за атрибутом (за замовчуванням - url).
     def uniq_by(field = :url)
       self.class.new(@items.uniq { |item| item[field] })
     end
@@ -154,7 +135,6 @@ module WebDataCollector
       @items.dup
     end
 
-    # Формат, придатний для експорту (JSON/CSV/YAML).
     def to_export
       @items.map(&:to_h)
     end
@@ -183,7 +163,6 @@ module WebDataCollector
       end
     end
 
-    # nil йдуть у кінець; числа і рядки сортуються кожні за своїми правилами.
     def sort_key(value)
       case value
       when nil then [2, ""]

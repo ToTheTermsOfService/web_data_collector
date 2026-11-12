@@ -4,16 +4,12 @@ application:
   log_file: "logs/app.log"
 
 source:
-  # Навчальний сайт, створений спеціально для практики веб-скрапінгу.
   url: "https://books.toscrape.com/catalogue/category/books/mystery_3/index.html"
   timeout: 15
-  max_pages: 3          # скільки сторінок пагінації обходити
-  request_delay: 0.5    # пауза між запитами, секунд (ввічливий скрапінг)
+  max_pages: 3
+  request_delay: 0.5
   user_agent: "web_data_collector/1.0 (educational lab)"
 
-# Кожне поле тут - це ще й атрибут Item: для нього динамічно
-# генеруються гетер (title), сетер (title=) і предикат (title?).
-# readonly: true - лише гетер. Подивитися: ruby main.rb --schema
 selectors:
   item: "article.product_pod"
   next_page: "li.next a"
@@ -34,13 +30,13 @@ selectors:
       selector: ".availability"
     category:
       selector: ".page-header h1"
-      scope: page           # береться зі сторінки, а не з картки товару
+      scope: page
     url:
       selector: "h3 a"
       attribute: "href"
       normalize: url
       required: true
-      readonly: true        # унікальний ключ запису - змінювати не можна
+      readonly: true
     image_url:
       selector: ".image_container img"
       attribute: "src"
@@ -54,5 +50,5 @@ database:
 
 output:
   directory: "output"
-  format: json            # json | csv | yaml
+  format: json
   filename: "items"

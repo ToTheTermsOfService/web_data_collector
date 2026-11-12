@@ -6,15 +6,6 @@ require "logger"
 require "time"
 
 module WebDataCollector
-  # Робота з SQLite: створення таблиці, збереження та читання Item.
-  #
-  # Схема будується з переліку полів (тому підходить і для YAML-конфігурації,
-  # і для DSL). Захист від дублікатів: на колонку unique_key (за
-  # замовчуванням url) накладається UNIQUE-індекс, а збереження працює як
-  # upsert - наявний запис оновлюється, а не дублюється.
-  # Усі значення передаються лише через параметризовані запити; імена
-  # таблиці й колонок перевіряються регулярним виразом, бо їх не можна
-  # параметризувати.
   class DatabaseConnector
     IDENTIFIER = /\A[A-Za-z_][A-Za-z0-9_]*\z/
     SERVICE_COLUMNS = %w[id scraped_at created_at updated_at].freeze
@@ -51,7 +42,6 @@ module WebDataCollector
       @columns = nil
     end
 
-    # Створює таблицю (якщо її немає) і додає колонки для нових полів.
     def prepare_schema(field_names)
       columns = field_names.map { |f| identifier!(f, "column") }.uniq - SERVICE_COLUMNS
       raise DatabaseError, "unique key '#{unique_key}' is not among fields: #{columns.join(', ')}" unless columns.include?(unique_key)
@@ -78,8 +68,6 @@ module WebDataCollector
       self
     end
 
-    # Зберігає колекцію в одній транзакції.
-    # Повертає статистику { inserted:, updated:, skipped: }.
     def save(collection)
       stats = { inserted: 0, updated: 0, skipped: 0 }
       return stats if collection.empty?
@@ -109,7 +97,6 @@ module WebDataCollector
       ItemCollection.define_schema(item_class).new(rows.map { |row| row_to_item(row, item_class) })
     end
 
-    # Клас Item з гетерами/сетерами для колонок таблиці.
     def stored_item_class
       Item.define_schema(table_columns - SERVICE_COLUMNS)
     end

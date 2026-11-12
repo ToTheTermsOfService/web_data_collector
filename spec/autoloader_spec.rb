@@ -3,8 +3,6 @@
 require_relative "spec_helper"
 
 RSpec.describe WebDataCollector::Autoloader, :tmpdir do
-  # Окремий маленький "проєкт" у тимчасовому каталозі, щоб перевіряти
-  # саме ліниве завантаження, незалежно від уже завантажених класів бібліотеки.
   def write(path, code)
     full = File.join(@tmpdir, path)
     FileUtils.mkdir_p(File.dirname(full))

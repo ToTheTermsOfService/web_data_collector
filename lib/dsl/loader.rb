@@ -2,13 +2,6 @@
 
 module WebDataCollector
   module DSL
-    # Завантажує DSL-файл і повертає список описаних у ньому конвеєрів.
-    #
-    # Файл підключається через Kernel#load з модулем-обгорткою (Ruby >= 3.1):
-    # верхній рівень файлу отримує метод pipeline з модуля TopLevel, а
-    # константи файлу не потрапляють у глобальний простір імен.
-    # Рядки DSL не передаються в eval - файл виконується як звичайний Ruby-код,
-    # так само як Rakefile чи Gemfile.
     module Loader
       module TopLevel
         def pipeline(name, &block)
@@ -36,7 +29,6 @@ module WebDataCollector
         Thread.current[:wdc_dsl_root] = nil
       end
 
-      # Опис конвеєра прямо в Ruby-коді (без окремого файлу).
       def self.define(name, root: Dir.pwd, &block)
         PipelineBuilder.build(name, root: root, &block)
       end

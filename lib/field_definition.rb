@@ -1,14 +1,6 @@
 # frozen_string_literal: true
 
 module WebDataCollector
-  # Опис одного поля, яке потрібно витягнути зі сторінки:
-  #   selector  - CSS-селектор;
-  #   attribute - HTML-атрибут (nil - текстовий вміст елемента);
-  #   normalize - ім'я нормалізатора або Proc;
-  #   required  - запис без цього поля вважається некоректним і відкидається;
-  #   scope     - :item (шукати всередині картки) або :page (на всій сторінці);
-  #   readonly  - Item отримає для поля лише гетер, без сетера.
-  # Використовується і YAML-конфігурацією, і DSL.
   class FieldDefinition
     SCOPES = %i[item page].freeze
     NAME_FORMAT = /\A[a-z_][a-z0-9_]*\z/
@@ -64,7 +56,6 @@ module WebDataCollector
       raise ValidationError, "field '#{name}': unknown normalizer '#{normalize}' (known: #{Normalizers.names.join(', ')})"
     end
 
-    # Перевіряємо синтаксис селектора заздалегідь, а не під час парсингу.
     def validate_selector!
       require "nokogiri"
       Nokogiri::HTML("<html></html>").css(selector)

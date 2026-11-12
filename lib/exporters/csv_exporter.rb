@@ -6,7 +6,6 @@ module WebDataCollector
   module Exporters
     class CsvExporter < BaseExporter
       def self.extensions = %w[csv]
-
       def serialize(collection)
         rows = collection.to_export
         headers = rows.flat_map(&:keys).uniq
